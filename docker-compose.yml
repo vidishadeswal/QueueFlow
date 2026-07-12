@@ -84,6 +84,7 @@ services:
       - backend
     volumes:
       - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
 
 volumes:
   postgres_data:

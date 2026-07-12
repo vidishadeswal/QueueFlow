@@ -6,49 +6,19 @@ import ThemeToggle from "../components/ThemeToggle";
 import { useAuth } from "../context/AuthContext";
 
 const FEATURES = [
-  {
-    icon: IconShield,
-    title: "Retries that don't give up",
-    body:
-      "Failed sends automatically retry with exponential backoff (1, 5, then 15 minutes) before landing in a dead letter queue your staff can review and resend.",
-  },
-  {
-    icon: IconClock,
-    title: "A scheduler that never forgets",
-    body:
-      "A background process polls for due reminders every 10 seconds and hands them off to the queue — no cron jobs to babysit, no reminders lost.",
-  },
-  {
-    icon: IconSparkle,
-    title: "AI-drafted messages",
-    body:
-      "Pick a tone — friendly, formal, or promotional — or describe what you want said, and let a local AI model draft the reminder for you.",
-  },
-  {
-    icon: IconChart,
-    title: "A dashboard that tells the truth",
-    body:
-      "Live delivery rate, queue depth, retry counts, and worker health — refreshed automatically, scoped to your business only.",
-  },
-  {
-    icon: IconLayers,
-    title: "Queue-backed, not request-backed",
-    body:
-      "Sending 10,000 reminders at 9am doesn't freeze your API. Workers process the queue independently so your app stays responsive.",
-  },
-  {
-    icon: IconBuilding,
-    title: "Built for any appointment business",
-    body:
-      "Dental clinics, gyms, salons, tutors, consultants — anyone who loses revenue when a customer simply forgets.",
-  },
+  { icon: IconShield, title: "Retries that don't give up", body: "Auto-retry with backoff, then a dead letter queue." },
+  { icon: IconClock, title: "A scheduler that never forgets", body: "Polls every 10s. No cron jobs to babysit." },
+  { icon: IconSparkle, title: "AI-drafted messages", body: "Pick a tone, let AI write the reminder." },
+  { icon: IconChart, title: "A dashboard that tells the truth", body: "Live delivery rate, queue depth, worker health." },
+  { icon: IconLayers, title: "Queue-backed, not request-backed", body: "10,000 sends won't freeze your API." },
+  { icon: IconBuilding, title: "Built for any appointment business", body: "Clinics, gyms, salons, tutors, consultants." },
 ];
 
 const STEPS = [
-  { label: "Create", body: "Add a contact, book an appointment, write or AI-draft a reminder." },
-  { label: "Schedule", body: "Stored in Postgres with a status and a send time. Nothing happens yet." },
-  { label: "Queue", body: "When it's due, the scheduler hands it to Redis for a worker to pick up." },
-  { label: "Deliver", body: "The worker sends it. Success is tracked; failure retries automatically." },
+  { label: "Create", icon: IconPlus },
+  { label: "Schedule", icon: IconClock },
+  { label: "Queue", icon: IconLayers },
+  { label: "Deliver", icon: IconSend },
 ];
 
 export default function Landing() {
@@ -111,11 +81,7 @@ export default function Landing() {
       <section className="problem">
         <Reveal className="problem-inner">
           <h2>The problem isn't messaging. It's reliability.</h2>
-          <p>
-            Some numbers fail. Some calls go unanswered. Some reminders are simply forgotten. QueueFlow isn't an
-            SMS app — it's a job scheduling platform where the reminder is just the first job type, built with
-            the same retry and dead-letter guarantees you'd expect from a production message queue.
-          </p>
+          <p>QueueFlow isn't an SMS app — it's a job queue with retries and a dead letter safety net built in.</p>
         </Reveal>
       </section>
 
@@ -140,15 +106,19 @@ export default function Landing() {
         <Reveal>
           <h2>How a reminder moves through the system</h2>
         </Reveal>
-        <div className="steps-grid">
+        <Reveal className="flow-track" delay={80}>
+          <div className="flow-line">
+            <div className="flow-pulse" />
+          </div>
           {STEPS.map((s, i) => (
-            <Reveal key={s.label} delay={i * 90} className="step-card">
-              <span className="step-number">{i + 1}</span>
-              <h3>{s.label}</h3>
-              <p>{s.body}</p>
-            </Reveal>
+            <div className="flow-node" key={s.label} style={{ animationDelay: `${i * 1}s` }}>
+              <span className="flow-node-icon">
+                <s.icon />
+              </span>
+              <span className="flow-node-label">{s.label}</span>
+            </div>
           ))}
-        </div>
+        </Reveal>
       </section>
 
       <section className="cta-band">
@@ -215,6 +185,24 @@ function IconBuilding() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 21V6l8-3 8 3v15" />
       <path d="M9 21v-6h6v6M9 10h.01M15 10h.01M9 14h.01M15 14h.01" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  );
+}
+
+function IconSend() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 3L10.5 13.5" />
+      <path d="M21 3l-6.5 18-4-8-8-4 18.5-6z" />
     </svg>
   );
 }

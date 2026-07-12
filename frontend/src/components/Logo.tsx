@@ -3,16 +3,26 @@ import { Link } from "react-router-dom";
 export default function Logo({ to = "/", className = "" }: { to?: string; className?: string }) {
   return (
     <Link to={to} className={`logo-mark ${className}`}>
-      <HeartIcon className="logo-heart" />
+      <QueueIcon className="logo-queue" />
       <span>QueueFlow</span>
     </Link>
   );
 }
 
-function HeartIcon({ className }: { className?: string }) {
+function QueueIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 21s-7.5-4.6-10.2-9.3C0.1 8.7 1.4 5 5 4.1c2.1-0.5 4.1 0.4 5.4 2.3l1.6 2.3 1.6-2.3C14.9 4.5 16.9 3.6 19 4.1c3.6 0.9 4.9 4.6 3.2 7.6C19.5 16.4 12 21 12 21z" />
+    <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+      <rect width="48" height="48" rx="12" fill="url(#logo-queue-gradient)" />
+      <circle className="logo-queue-dot" cx="14" cy="24" r="4.2" fill="#fff" style={{ animationDelay: "0s" }} />
+      <circle className="logo-queue-dot" cx="24" cy="24" r="4.2" fill="#fff" style={{ animationDelay: "0.3s" }} />
+      <circle className="logo-queue-dot" cx="34" cy="24" r="4.2" fill="#fff" style={{ animationDelay: "0.6s" }} />
+      <defs>
+        <linearGradient id="logo-queue-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f9a8d4" />
+          <stop offset="55%" stopColor="#ec4899" />
+          <stop offset="100%" stopColor="#fb7185" />
+        </linearGradient>
+      </defs>
     </svg>
   );
 }

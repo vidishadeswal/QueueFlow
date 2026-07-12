@@ -30,17 +30,30 @@
   color: var(--text-h);
 }
 
-.logo-heart {
-  color: var(--accent);
-  animation: heartbeat 2.4s ease-in-out infinite;
+.logo-queue {
   flex-shrink: 0;
+  border-radius: 26%;
+}
+
+.logo-queue-dot {
+  animation: queueDotPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes queueDotPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .landing-logo {
   font-size: 20px;
 }
 
-.landing-logo .logo-heart {
+.landing-logo .logo-queue {
   width: 22px;
   height: 22px;
 }
@@ -361,6 +374,158 @@
   line-height: 1.6;
 }
 
+/* ---------- Animated "how it works" flow ---------- */
+
+.flow-track {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 720px;
+  margin: 32px auto 0;
+  padding: 0 8px;
+}
+
+.flow-line {
+  position: absolute;
+  top: 32px;
+  left: 32px;
+  right: 32px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.flow-pulse {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--gradient);
+  box-shadow: 0 0 14px var(--accent);
+  animation: flowPulseTravelX 4s linear infinite;
+}
+
+.flow-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.flow-node-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  animation: flowNodeActivate 4s ease-in-out infinite;
+}
+
+.flow-node-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.flow-node-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+@keyframes flowPulseTravelX {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes flowNodeActivate {
+  0%,
+  15% {
+    border-color: transparent;
+    color: #fff;
+    background: var(--gradient);
+    transform: scale(1.1);
+    box-shadow: var(--shadow-lg);
+  }
+  30%,
+  100% {
+    border-color: var(--border);
+    color: var(--text);
+    background: var(--bg);
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .flow-track {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 28px;
+    padding-left: 16px;
+  }
+
+  .flow-line {
+    top: 32px;
+    bottom: 32px;
+    left: 32px;
+    right: auto;
+    width: 3px;
+    height: auto;
+  }
+
+  .flow-pulse {
+    left: 50%;
+    top: 0;
+    animation: flowPulseTravelY 4s linear infinite;
+  }
+
+  .flow-node {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  @keyframes flowPulseTravelY {
+    0% {
+      top: 0%;
+      opacity: 0;
+    }
+    5% {
+      opacity: 1;
+    }
+    95% {
+      opacity: 1;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+}
+
 .cta-band {
   padding: 88px 24px;
   text-align: center;
@@ -420,7 +585,7 @@
   font-size: 18px;
 }
 
-.footer-logo .logo-heart {
+.footer-logo .logo-queue {
   width: 18px;
   height: 18px;
 }
@@ -575,7 +740,7 @@
   letter-spacing: -0.4px;
 }
 
-.app-logo .logo-heart {
+.app-logo .logo-queue {
   width: 22px;
   height: 22px;
 }
