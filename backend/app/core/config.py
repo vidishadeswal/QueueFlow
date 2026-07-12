@@ -27,5 +27,11 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://ollama:11434"
     ollama_model: str = "llama3.2:1b"
 
+    visibility_timeout_seconds: int = 60
+    email_dry_run: bool = False
+
+    rate_limit_login_per_minute: int = 5
+    rate_limit_signup_per_hour: int = 5
+
 
 settings = Settings()

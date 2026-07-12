@@ -8,6 +8,7 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.core.database import Base, get_db
+from app.core.redis import redis_client
 from app.main import app
 from app import models  # noqa: F401  (registers all models on Base.metadata)
 
@@ -54,3 +55,18 @@ async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def clean_redis_test_keys():
+    yield
+    for prefix in ("ratelimit:*", "revoked_token:*"):
+        keys = [key async for key in redis_client.scan_iter(match=prefix)]
+        if keys:
+            await redis_client.delete(*keys)
+
+    # redis-py's connection pool binds connections to the event loop they were
+    # created in. pytest-asyncio gives each test function a fresh loop, so without
+    # this the *next* test reuses a connection tied to a now-closed loop and dies
+    # with "RuntimeError: Event loop is closed".
+    await redis_client.connection_pool.disconnect()

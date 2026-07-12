@@ -1,18 +1,31 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_business
+from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.rate_limit import rate_limiter
+from app.core.redis import redis_client
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.token_denylist import revoke_token
 from app.models.business import Business
 from app.schemas.business import BusinessCreate, BusinessOut, Token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-@router.post("/signup", response_model=BusinessOut, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/signup",
+    response_model=BusinessOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limiter("signup", settings.rate_limit_signup_per_hour, 3600))],
+)
 async def signup(payload: BusinessCreate, db: AsyncSession = Depends(get_db)):
     existing = await db.scalar(select(Business).where(Business.email == payload.email))
     if existing is not None:
@@ -29,7 +42,11 @@ async def signup(payload: BusinessCreate, db: AsyncSession = Depends(get_db)):
     return business
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[Depends(rate_limiter("login", settings.rate_limit_login_per_minute, 60))],
+)
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     business = await db.scalar(select(Business).where(Business.email == form_data.username))
     if business is None or not verify_password(form_data.password, business.hashed_password):
@@ -41,6 +58,19 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
 
     access_token = create_access_token(subject=str(business.id))
     return Token(access_token=access_token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(token: str = Depends(oauth2_scheme)):
+    payload = decode_access_token(token)
+    if payload is None:
+        return
+
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if jti and exp:
+        ttl_seconds = int(exp - datetime.now(timezone.utc).timestamp())
+        await revoke_token(redis_client, jti, ttl_seconds)
 
 
 @router.get("/me", response_model=BusinessOut)

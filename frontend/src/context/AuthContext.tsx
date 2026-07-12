@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { type Business, fetchMe, login as loginRequest } from "../api/auth";
+import { type Business, fetchMe, login as loginRequest, logoutRequest } from "../api/auth";
 
 interface AuthContextValue {
   business: Business | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -32,7 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusiness(await fetchMe());
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      await logoutRequest();
+    } catch {
+      // Best-effort server-side revocation; always clear local session regardless.
+    }
     localStorage.removeItem("access_token");
     setBusiness(null);
   }

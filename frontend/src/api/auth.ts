@@ -33,3 +33,7 @@ export async function fetchMe(): Promise<Business> {
   const { data } = await apiClient.get<Business>("/auth/me");
   return data;
 }
+
+export async function logoutRequest(): Promise<void> {
+  await apiClient.post("/auth/logout");
+}

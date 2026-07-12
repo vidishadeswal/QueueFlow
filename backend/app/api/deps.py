@@ -5,7 +5,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.redis import redis_client
 from app.core.security import decode_access_token
+from app.core.token_denylist import is_token_revoked
 from app.models.business import Business
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -21,8 +23,16 @@ async def get_current_business(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    subject = decode_access_token(token)
-    if subject is None:
+    payload = decode_access_token(token)
+    if payload is None:
+        raise credentials_error
+
+    subject = payload.get("sub")
+    jti = payload.get("jti")
+    if subject is None or jti is None:
+        raise credentials_error
+
+    if await is_token_revoked(redis_client, jti):
         raise credentials_error
 
     try:

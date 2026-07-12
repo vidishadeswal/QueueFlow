@@ -47,6 +47,7 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/tests:/app/tests
+      - ./backend/scripts:/app/scripts
 
   scheduler:
     build: ./backend
