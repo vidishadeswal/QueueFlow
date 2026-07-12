@@ -1,0 +1,221 @@
+:root {
+  --text: #7a5c6c;
+  --text-h: #2b1420;
+  --bg: #fffafc;
+  --bg-subtle: #fff0f6;
+  --border: #f7d6e6;
+  --code-bg: #ffe3ef;
+  --accent: #ec4899;
+  --accent-2: #fb7185;
+  --accent-bg: rgba(236, 72, 153, 0.08);
+  --accent-border: rgba(236, 72, 153, 0.3);
+  --gradient: linear-gradient(120deg, #f9a8d4 0%, #ec4899 55%, #fb7185 100%);
+  --shadow:
+    rgba(219, 39, 119, 0.08) 0 1px 2px, rgba(219, 39, 119, 0.06) 0 8px 24px -6px;
+  --shadow-lg:
+    rgba(219, 39, 119, 0.14) 0 12px 32px -8px, rgba(219, 39, 119, 0.08) 0 4px 8px -2px;
+
+  --sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --heading: "Sora", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+
+  font: 16px/155% var(--sans);
+  letter-spacing: 0.1px;
+  color-scheme: light;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --text: #cba3b8;
+    --text-h: #fbe6f0;
+    --bg: #1a0f16;
+    --bg-subtle: #22131d;
+    --border: #3c2130;
+    --code-bg: #2b1522;
+    --accent: #f472b6;
+    --accent-2: #fb7185;
+    --accent-bg: rgba(244, 114, 182, 0.16);
+    --accent-border: rgba(244, 114, 182, 0.4);
+    --gradient: linear-gradient(120deg, #f9a8d4 0%, #f472b6 55%, #fb7185 100%);
+    --shadow:
+      rgba(0, 0, 0, 0.4) 0 1px 2px, rgba(0, 0, 0, 0.3) 0 8px 24px -6px;
+    --shadow-lg:
+      rgba(0, 0, 0, 0.5) 0 12px 32px -8px, rgba(0, 0, 0, 0.35) 0 4px 8px -2px;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --text: #cba3b8;
+  --text-h: #fbe6f0;
+  --bg: #1a0f16;
+  --bg-subtle: #22131d;
+  --border: #3c2130;
+  --code-bg: #2b1522;
+  --accent: #f472b6;
+  --accent-2: #fb7185;
+  --accent-bg: rgba(244, 114, 182, 0.16);
+  --accent-border: rgba(244, 114, 182, 0.4);
+  --gradient: linear-gradient(120deg, #f9a8d4 0%, #f472b6 55%, #fb7185 100%);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 1px 2px, rgba(0, 0, 0, 0.3) 0 8px 24px -6px;
+  --shadow-lg:
+    rgba(0, 0, 0, 0.5) 0 12px 32px -8px, rgba(0, 0, 0, 0.35) 0 4px 8px -2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  transition: background-color 0.25s ease;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--heading);
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+/* ---------- Animation keyframes ---------- */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUpCentered {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatBlob {
+  0%,
+  100% {
+    transform: translate(-50%, 0) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -18px) scale(1.06);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-bg);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.15) rotate(12deg);
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.18);
+  }
+  30% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.12);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
