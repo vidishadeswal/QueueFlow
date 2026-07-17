@@ -3,13 +3,14 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.reminder import ReminderStatus
+from app.models.reminder import ReminderChannel, ReminderStatus
 
 
 class ReminderCreate(BaseModel):
     appointment_id: uuid.UUID
     message: str
     send_at: datetime
+    channel: ReminderChannel = ReminderChannel.email
 
 
 class ReminderUpdate(BaseModel):
@@ -24,6 +25,7 @@ class ReminderOut(BaseModel):
     message: str
     send_at: datetime
     status: ReminderStatus
+    channel: ReminderChannel
     retry_count: int
     last_error: str | None
     sent_at: datetime | None

@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type { Page } from "./pagination";
 
 export type ReminderStatus = "pending" | "queued" | "sent" | "dead_letter";
+export type ReminderChannel = "email" | "webhook";
 
 export interface Reminder {
   id: string;
@@ -10,6 +11,7 @@ export interface Reminder {
   message: string;
   send_at: string;
   status: ReminderStatus;
+  channel: ReminderChannel;
   retry_count: number;
   last_error: string | null;
   sent_at: string | null;
@@ -20,6 +22,7 @@ export interface ReminderCreate {
   appointment_id: string;
   message: string;
   send_at: string;
+  channel?: ReminderChannel;
 }
 
 // Requests the max page size the API allows; this dashboard doesn't yet have

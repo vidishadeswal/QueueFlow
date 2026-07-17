@@ -13,7 +13,7 @@ from app.core.redis import redis_client
 from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.core.token_denylist import revoke_token
 from app.models.business import Business
-from app.schemas.business import BusinessCreate, BusinessOut, Token
+from app.schemas.business import BusinessCreate, BusinessOut, BusinessUpdate, Token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -75,4 +75,20 @@ async def logout(token: str = Depends(oauth2_scheme)):
 
 @router.get("/me", response_model=BusinessOut)
 async def me(current_business: Business = Depends(get_current_business)):
+    return current_business
+
+
+@router.patch("/me", response_model=BusinessOut)
+async def update_me(
+    payload: BusinessUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_business: Business = Depends(get_current_business),
+):
+    if payload.webhook_url and not payload.webhook_url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="webhook_url must start with http:// or https://")
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(current_business, field, value)
+    await db.commit()
+    await db.refresh(current_business)
     return current_business

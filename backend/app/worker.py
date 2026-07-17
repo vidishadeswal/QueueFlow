@@ -4,7 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.config import settings
 from app.core.database import async_session
-from app.core.email import EmailSendError, send_reminder_email
+from app.core.delivery import DeliverySendError
+from app.core.email import send_reminder_email
 from app.core.heartbeat import record_heartbeat
 from app.core.logging_config import configure_logging, get_logger
 from app.core.metrics import (
@@ -16,8 +17,9 @@ from app.core.metrics import (
 )
 from app.core.queue import REMINDER_QUEUE_KEY
 from app.core.redis import redis_client
+from app.core.webhook import send_reminder_webhook
 from app.models import Business, Contact, Reminder
-from app.models.reminder import ReminderStatus
+from app.models.reminder import ReminderChannel, ReminderStatus
 
 configure_logging()
 logger = get_logger("worker")
@@ -40,19 +42,32 @@ async def process_reminder(reminder_id: str) -> None:
 
         try:
             async with track_send_latency(redis_client):
-                await send_reminder_email(
-                    to_email=contact.email,
-                    to_name=contact.name,
-                    subject=f"Reminder from {business.name}",
-                    message=reminder.message,
-                )
+                if reminder.channel == ReminderChannel.webhook:
+                    await send_reminder_webhook(
+                        webhook_url=business.webhook_url,
+                        reminder_id=reminder_id,
+                        business_name=business.name,
+                        contact_name=contact.name,
+                        contact_email=contact.email,
+                        message=reminder.message,
+                    )
+                else:
+                    await send_reminder_email(
+                        to_email=contact.email,
+                        to_name=contact.name,
+                        subject=f"Reminder from {business.name}",
+                        message=reminder.message,
+                    )
             reminder.status = ReminderStatus.sent
             reminder.sent_at = datetime.now(timezone.utc)
             reminder.last_error = None
             reminder.claimed_at = None
             await increment(redis_client, COUNTER_SENT)
-            logger.info("reminder_sent", extra={"reminder_id": reminder_id, "contact_email": contact.email})
-        except EmailSendError as exc:
+            logger.info(
+                "reminder_sent",
+                extra={"reminder_id": reminder_id, "channel": reminder.channel.value, "contact_email": contact.email},
+            )
+        except DeliverySendError as exc:
             reminder.retry_count += 1
             reminder.last_error = str(exc)[:500]
             reminder.claimed_at = None

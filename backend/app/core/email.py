@@ -4,11 +4,12 @@ import random
 import httpx
 
 from app.core.config import settings
+from app.core.delivery import DeliverySendError
 
 BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 
-class EmailSendError(Exception):
+class EmailSendError(DeliverySendError):
     pass
 
 

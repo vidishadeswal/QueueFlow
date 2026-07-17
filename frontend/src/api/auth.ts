@@ -4,6 +4,7 @@ export interface Business {
   id: string;
   name: string;
   email: string;
+  webhook_url: string | null;
   created_at: string;
 }
 
@@ -31,6 +32,11 @@ export async function login(email: string, password: string): Promise<string> {
 
 export async function fetchMe(): Promise<Business> {
   const { data } = await apiClient.get<Business>("/auth/me");
+  return data;
+}
+
+export async function updateWebhookUrl(webhookUrl: string): Promise<Business> {
+  const { data } = await apiClient.patch<Business>("/auth/me", { webhook_url: webhookUrl });
   return data;
 }
 

@@ -16,6 +16,11 @@ class ReminderStatus(str, enum.Enum):
     dead_letter = "dead_letter"
 
 
+class ReminderChannel(str, enum.Enum):
+    email = "email"
+    webhook = "webhook"
+
+
 class Reminder(Base):
     __tablename__ = "reminders"
 
@@ -33,6 +38,9 @@ class Reminder(Base):
     send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     status: Mapped[ReminderStatus] = mapped_column(
         Enum(ReminderStatus, name="reminder_status"), default=ReminderStatus.pending, nullable=False, index=True
+    )
+    channel: Mapped[ReminderChannel] = mapped_column(
+        Enum(ReminderChannel, name="reminder_channel"), default=ReminderChannel.email, nullable=False
     )
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)

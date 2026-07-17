@@ -12,7 +12,7 @@ from app.core.idempotency import IdempotencyConflict, claim_idempotency_key, com
 from app.core.logging_config import get_logger
 from app.core.redis import redis_client
 from app.models.business import Business
-from app.models.reminder import Reminder, ReminderStatus
+from app.models.reminder import Reminder, ReminderChannel, ReminderStatus
 from app.schemas.pagination import Page
 from app.schemas.reminder import ReminderCreate, ReminderOut, ReminderUpdate
 
@@ -48,6 +48,14 @@ async def create_reminder(
                 extra={"reminder_id": cached_id, "idempotency_key": idempotency_key},
             )
             return await get_owned_reminder(uuid.UUID(cached_id), db, business)
+
+    if payload.channel == ReminderChannel.webhook and not business.webhook_url:
+        if idempotency_key:
+            await release_idempotency_key(redis_client, business.id, idempotency_key)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configure a webhook_url first (PATCH /auth/me) before creating webhook reminders",
+        )
 
     try:
         appointment = await get_owned_appointment(payload.appointment_id, db, business)

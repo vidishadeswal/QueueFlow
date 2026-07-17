@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { draftReminderMessage, type ReminderTone } from "../api/ai";
 import { listAppointments, type Appointment } from "../api/appointments";
+import { fetchMe, updateWebhookUrl } from "../api/auth";
 import { listContacts, type Contact } from "../api/contacts";
-import { createReminder, deleteReminder, listReminders, retryReminder, type Reminder } from "../api/reminders";
+import {
+  createReminder,
+  deleteReminder,
+  listReminders,
+  retryReminder,
+  type Reminder,
+  type ReminderChannel,
+} from "../api/reminders";
 import DateTimeField from "../components/DateTimeField";
 
 const TONES: ReminderTone[] = ["friendly", "formal", "promotional"];
@@ -22,6 +30,13 @@ export default function Reminders() {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
 
+  const [channel, setChannel] = useState<ReminderChannel>("email");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [webhookSaved, setWebhookSaved] = useState(false);
+
   // Held stable across a failed submission's retry so re-clicking "Add" after a
   // dropped request resolves to the same reminder instead of creating a duplicate;
   // cleared once a submission actually succeeds so the next reminder gets a fresh one.
@@ -31,9 +46,29 @@ export default function Reminders() {
     listReminders().then(setReminders).catch(() => setReminders([]));
     listAppointments().then(setAppointments).catch(() => setAppointments([]));
     listContacts().then(setContacts).catch(() => setContacts([]));
+    fetchMe().then((business) => {
+      setWebhookUrl(business.webhook_url ?? "");
+      setWebhookConfigured(!!business.webhook_url);
+    });
   }
 
   useEffect(refresh, []);
+
+  async function handleSaveWebhook(e: FormEvent) {
+    e.preventDefault();
+    setWebhookError(null);
+    setWebhookSaved(false);
+    setSavingWebhook(true);
+    try {
+      const business = await updateWebhookUrl(webhookUrl);
+      setWebhookConfigured(!!business.webhook_url);
+      setWebhookSaved(true);
+    } catch (err: any) {
+      setWebhookError(err?.response?.data?.detail ?? "Could not save webhook URL.");
+    } finally {
+      setSavingWebhook(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -52,12 +87,14 @@ export default function Reminders() {
           appointment_id: appointmentId,
           message,
           send_at: new Date(sendAt).toISOString(),
+          channel,
         },
         submissionKeyRef.current,
       );
       submissionKeyRef.current = null;
       setMessage("");
       setSendAt("");
+      setChannel("email");
       refresh();
     } catch (err: any) {
       setError(err?.response?.data?.detail ?? "Could not create reminder.");
@@ -137,6 +174,22 @@ export default function Reminders() {
             {draftError && <p className="error">{draftError}</p>}
           </div>
 
+          <form className="ai-draft-box" onSubmit={handleSaveWebhook}>
+            <span className="ai-draft-label">Webhook delivery</span>
+            <div className="ai-draft-controls">
+              <input
+                placeholder="https://your-system.example.com/hooks/queueflow"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+              />
+              <button type="submit" disabled={savingWebhook}>
+                {savingWebhook ? "Saving..." : "Save"}
+              </button>
+            </div>
+            {webhookError && <p className="error">{webhookError}</p>}
+            {webhookSaved && !webhookError && <p className="placeholder-note">Saved.</p>}
+          </form>
+
           <form className="inline-form" onSubmit={handleSubmit}>
             <select value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)} required>
               <option value="" disabled>
@@ -155,6 +208,12 @@ export default function Reminders() {
               required
             />
             <DateTimeField value={sendAt} onChange={setSendAt} placeholder="Send at" />
+            <select value={channel} onChange={(e) => setChannel(e.target.value as ReminderChannel)}>
+              <option value="email">Email</option>
+              <option value="webhook" disabled={!webhookConfigured}>
+                Webhook{webhookConfigured ? "" : " (configure a URL above first)"}
+              </option>
+            </select>
             <button type="submit" disabled={submitting}>
               {submitting ? "Adding..." : "Add reminder"}
             </button>
@@ -169,6 +228,7 @@ export default function Reminders() {
             <th>Message</th>
             <th>Appointment</th>
             <th>Send at</th>
+            <th>Channel</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -179,6 +239,7 @@ export default function Reminders() {
               <td>{r.message}</td>
               <td>{appointmentLabel(r.appointment_id)}</td>
               <td>{new Date(r.send_at).toLocaleString()}</td>
+              <td>{r.channel}</td>
               <td>
                 <span className={`status-badge ${r.status}`}>{r.status.replace("_", " ")}</span>
                 {r.last_error && <div className="last-error">{r.last_error}</div>}
@@ -197,7 +258,7 @@ export default function Reminders() {
           ))}
           {reminders.length === 0 && (
             <tr>
-              <td colSpan={5} className="empty-row">
+              <td colSpan={6} className="empty-row">
                 No reminders yet.
               </td>
             </tr>

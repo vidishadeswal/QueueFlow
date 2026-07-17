@@ -56,9 +56,23 @@ Twilio and similar SMS APIs don't have a real free tier for sending to arbitrary
 phone numbers (trial accounts only send to pre-verified numbers). QueueFlow uses
 [Brevo](https://www.brevo.com)'s free transactional email API instead — 300
 emails/day, no paid account required, and it reaches any contact by email without
-requiring them to install an app or opt into a bot first. The architecture doesn't
-care what channel is used; swapping in a paid SMS provider later is a change
-localized to `app/core/email.py` and `app/worker.py`.
+requiring them to install an app or opt into a bot first.
+
+### Pluggable delivery channels
+
+Every reminder picks a `channel` at creation time — `email` (default) or
+`webhook`. Both funnel through the exact same scheduler → queue → worker →
+retry/backoff/DLQ pipeline; the only thing that varies per channel is which
+`core/*.py` module the worker calls in `process_reminder()`, and both raise a
+shared `DeliverySendError` so the retry logic never needs to know which
+channel it's looking at. Adding a third channel (SMS, Slack, ...) means adding
+one module with a `send_reminder_*()` function and one `if` branch in
+`worker.py` — nothing about the pipeline itself changes.
+
+`webhook` delivery POSTs a JSON payload (`event`, `reminder_id`,
+`business_name`, `contact`, `message`) to a `webhook_url` configured per
+business via `PATCH /auth/me`. A reminder can only be created with
+`channel=webhook` if that business already has one set.
 
 ## Stack
 
@@ -85,11 +99,12 @@ Six containers, defined in [`docker-compose.yml`](docker-compose.yml):
 
 ## Data model
 
-- **Business** — a tenant account (signup/login)
+- **Business** — a tenant account (signup/login), optionally has a `webhook_url`
 - **Contact** — a business's customer/patient (email required — the delivery channel)
 - **Appointment** — links a contact to a scheduled event
-- **Reminder** — the job itself: `message`, `send_at`, `status`
-  (`pending` → `queued` → `sent` / `failed` → `dead_letter`), `retry_count`, `last_error`
+- **Reminder** — the job itself: `message`, `send_at`, `channel` (`email` /
+  `webhook`), `status` (`pending` → `queued` → `sent` / `dead_letter`),
+  `retry_count`, `last_error`
 
 All data is scoped to the authenticated business — every query filters by
 `business_id`, and cross-tenant access returns 404.
@@ -157,7 +172,7 @@ Postgres row locks and the Redis queue.
 
 ## API surface
 
-- `POST /auth/signup`, `POST /auth/login`, `GET /auth/me`
+- `POST /auth/signup`, `POST /auth/login`, `GET|PATCH /auth/me` (`PATCH` sets `webhook_url`)
 - `GET|POST /contacts`, `GET|PATCH|DELETE /contacts/{id}`
 - `GET|POST /appointments`, `GET|PATCH|DELETE /appointments/{id}`
 - `GET|POST /reminders`, `GET|PATCH|DELETE /reminders/{id}`, `POST /reminders/{id}/retry`
