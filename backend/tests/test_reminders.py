@@ -1,5 +1,7 @@
 import uuid
 
+from app.core.idempotency import claim_idempotency_key
+from app.core.redis import redis_client
 from app.models.reminder import Reminder, ReminderStatus
 from tests.conftest import TestSession
 
@@ -50,7 +52,9 @@ async def test_create_and_list_reminder(client):
 
     list_response = await client.get("/reminders", headers=headers)
     assert list_response.status_code == 200
-    assert len(list_response.json()) == 1
+    body = list_response.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
 
 
 async def test_reminder_status_filter(client):
@@ -65,10 +69,10 @@ async def test_reminder_status_filter(client):
     )
 
     pending = await client.get("/reminders?status_filter=pending", headers=headers)
-    assert len(pending.json()) == 1
+    assert pending.json()["total"] == 1
 
     sent = await client.get("/reminders?status_filter=sent", headers=headers)
-    assert len(sent.json()) == 0
+    assert sent.json()["total"] == 0
 
 
 async def test_cross_tenant_isolation(client):
@@ -89,7 +93,7 @@ async def test_cross_tenant_isolation(client):
     assert other_business_access.status_code == 404
 
     other_business_list = await client.get("/reminders", headers={"Authorization": f"Bearer {token2}"})
-    assert other_business_list.json() == []
+    assert other_business_list.json()["items"] == []
 
 
 async def test_retry_endpoint_rejects_non_dead_letter(client):
@@ -152,3 +156,92 @@ async def test_patch_cannot_set_status_directly(client):
     )
     assert patch_response.status_code == 200
     assert patch_response.json()["status"] == "pending"
+
+
+async def test_reminders_pagination(client):
+    token = await register_business(client, "pagination@testbiz.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    appointment_id = await create_appointment(client, token)
+
+    for i in range(5):
+        await client.post(
+            "/reminders",
+            json={
+                "appointment_id": appointment_id,
+                "message": f"test {i}",
+                "send_at": f"2030-01-01T09:0{i}:00Z",
+            },
+            headers=headers,
+        )
+
+    page1 = await client.get("/reminders?limit=2&offset=0", headers=headers)
+    assert page1.json()["total"] == 5
+    assert len(page1.json()["items"]) == 2
+
+    page2 = await client.get("/reminders?limit=2&offset=2", headers=headers)
+    assert len(page2.json()["items"]) == 2
+
+    page3 = await client.get("/reminders?limit=2&offset=4", headers=headers)
+    assert len(page3.json()["items"]) == 1
+
+    all_ids = [r["id"] for r in page1.json()["items"] + page2.json()["items"] + page3.json()["items"]]
+    assert len(set(all_ids)) == 5
+
+
+async def test_idempotent_reminder_creation_returns_same_reminder(client):
+    token = await register_business(client, "idempotent1@testbiz.com")
+    headers = {"Authorization": f"Bearer {token}", "Idempotency-Key": "retry-of-same-request"}
+    appointment_id = await create_appointment(client, token)
+    payload = {"appointment_id": appointment_id, "message": "test", "send_at": "2030-01-01T09:00:00Z"}
+
+    first = await client.post("/reminders", json=payload, headers=headers)
+    assert first.status_code == 201
+
+    second = await client.post("/reminders", json=payload, headers=headers)
+    assert second.status_code == 201
+    assert second.json()["id"] == first.json()["id"]
+
+    list_response = await client.get("/reminders", headers={"Authorization": f"Bearer {token}"})
+    assert list_response.json()["total"] == 1
+
+
+async def test_idempotency_key_rejects_concurrent_duplicate(client):
+    token = await register_business(client, "idempotent2@testbiz.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    appointment_id = await create_appointment(client, token)
+
+    me = await client.get("/auth/me", headers=headers)
+    business_id = me.json()["id"]
+
+    # Simulate another request with the same key still being processed.
+    await claim_idempotency_key(redis_client, business_id, "in-flight-key")
+
+    response = await client.post(
+        "/reminders",
+        json={"appointment_id": appointment_id, "message": "test", "send_at": "2030-01-01T09:00:00Z"},
+        headers={**headers, "Idempotency-Key": "in-flight-key"},
+    )
+    assert response.status_code == 409
+
+
+async def test_idempotency_key_released_on_failed_creation(client):
+    """A failed create (bad appointment_id) shouldn't permanently burn the
+    Idempotency-Key -- retrying with a valid payload under the same key must
+    still succeed rather than getting stuck behind the failed attempt."""
+    token = await register_business(client, "idempotent3@testbiz.com")
+    headers = {"Authorization": f"Bearer {token}", "Idempotency-Key": "retry-after-failure"}
+    appointment_id = await create_appointment(client, token)
+
+    failed = await client.post(
+        "/reminders",
+        json={"appointment_id": str(uuid.uuid4()), "message": "test", "send_at": "2030-01-01T09:00:00Z"},
+        headers=headers,
+    )
+    assert failed.status_code == 404
+
+    retried = await client.post(
+        "/reminders",
+        json={"appointment_id": appointment_id, "message": "test", "send_at": "2030-01-01T09:00:00Z"},
+        headers=headers,
+    )
+    assert retried.status_code == 201

@@ -69,10 +69,10 @@ async def create_reminder(client: httpx.AsyncClient, headers: dict, appointment_
 
 async def count_terminal(client: httpx.AsyncClient, headers: dict) -> dict[str, int]:
     counts = {}
-    for status_filter in ("sent", "failed", "dead_letter", "pending", "queued"):
-        response = await client.get(f"/reminders?status_filter={status_filter}", headers=headers)
+    for status_filter in ("sent", "dead_letter", "pending", "queued"):
+        response = await client.get(f"/reminders?status_filter={status_filter}&limit=1", headers=headers)
         response.raise_for_status()
-        counts[status_filter] = len(response.json())
+        counts[status_filter] = response.json()["total"]
     return counts
 
 
@@ -111,10 +111,10 @@ async def main() -> None:
         while time.perf_counter() - drain_start < args.drain_timeout:
             counts = await count_terminal(client, headers)
             in_flight = counts["pending"] + counts["queued"]
-            terminal = counts["sent"] + counts["failed"] + counts["dead_letter"]
+            terminal = counts["sent"] + counts["dead_letter"]
             print(
                 f"  [{time.perf_counter() - drain_start:5.1f}s] "
-                f"sent={counts['sent']} failed={counts['failed']} dead_letter={counts['dead_letter']} "
+                f"sent={counts['sent']} dead_letter={counts['dead_letter']} "
                 f"pending={counts['pending']} queued={counts['queued']}"
             )
             if in_flight == 0 and terminal >= args.count:

@@ -60,7 +60,7 @@ async def client():
 @pytest_asyncio.fixture(autouse=True)
 async def clean_redis_test_keys():
     yield
-    for prefix in ("ratelimit:*", "revoked_token:*"):
+    for prefix in ("ratelimit:*", "revoked_token:*", "idempotency:*"):
         keys = [key async for key in redis_client.scan_iter(match=prefix)]
         if keys:
             await redis_client.delete(*keys)

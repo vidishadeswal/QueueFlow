@@ -1,7 +1,7 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.contacts import get_owned_contact
@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.appointment import Appointment
 from app.models.business import Business
 from app.schemas.appointment import AppointmentCreate, AppointmentOut, AppointmentUpdate
+from app.schemas.pagination import Page
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -36,15 +37,17 @@ async def create_appointment(
     return appointment
 
 
-@router.get("", response_model=list[AppointmentOut])
+@router.get("", response_model=Page[AppointmentOut])
 async def list_appointments(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     business: Business = Depends(get_current_business),
 ):
-    result = await db.scalars(
-        select(Appointment).where(Appointment.business_id == business.id).order_by(Appointment.scheduled_at)
-    )
-    return list(result)
+    base_query = select(Appointment).where(Appointment.business_id == business.id)
+    total = await db.scalar(select(func.count()).select_from(base_query.subquery()))
+    result = await db.scalars(base_query.order_by(Appointment.scheduled_at).limit(limit).offset(offset))
+    return Page(items=list(result), total=total, limit=limit, offset=offset)
 
 
 @router.get("/{appointment_id}", response_model=AppointmentOut)

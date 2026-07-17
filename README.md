@@ -161,6 +161,23 @@ Postgres row locks and the Redis queue.
 - `GET|POST /contacts`, `GET|PATCH|DELETE /contacts/{id}`
 - `GET|POST /appointments`, `GET|PATCH|DELETE /appointments/{id}`
 - `GET|POST /reminders`, `GET|PATCH|DELETE /reminders/{id}`, `POST /reminders/{id}/retry`
-- `GET /analytics/summary` — dashboard metrics (today's/failed/upcoming reminders,
+- `GET /analytics/summary` — dashboard metrics (today's/upcoming reminders,
   delivery %, avg retry count, queue size, worker health)
 - `GET /health`, `GET /queue/status`
+
+### Pagination
+
+`GET /contacts`, `GET /appointments`, and `GET /reminders` all accept `limit`
+(default 50, max 200) and `offset` (default 0) query params, and return:
+
+```json
+{ "items": [...], "total": 123, "limit": 50, "offset": 0 }
+```
+
+### Idempotent reminder creation
+
+`POST /reminders` accepts an optional `Idempotency-Key` header. Retrying the
+same request with the same key (e.g. after a dropped connection) returns the
+original reminder instead of creating a duplicate; a second request with a key
+still being processed gets `409 Conflict`. Keys are scoped per business and
+expire after 24h.

@@ -1,7 +1,7 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_business
@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.models.business import Business
 from app.models.contact import Contact
 from app.schemas.contact import ContactCreate, ContactOut, ContactUpdate
+from app.schemas.pagination import Page
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -33,13 +34,17 @@ async def create_contact(
     return contact
 
 
-@router.get("", response_model=list[ContactOut])
+@router.get("", response_model=Page[ContactOut])
 async def list_contacts(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     business: Business = Depends(get_current_business),
 ):
-    result = await db.scalars(select(Contact).where(Contact.business_id == business.id).order_by(Contact.created_at.desc()))
-    return list(result)
+    base_query = select(Contact).where(Contact.business_id == business.id)
+    total = await db.scalar(select(func.count()).select_from(base_query.subquery()))
+    result = await db.scalars(base_query.order_by(Contact.created_at.desc()).limit(limit).offset(offset))
+    return Page(items=list(result), total=total, limit=limit, offset=offset)
 
 
 @router.get("/{contact_id}", response_model=ContactOut)

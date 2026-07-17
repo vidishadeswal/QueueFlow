@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { Page } from "./pagination";
 
 export interface Contact {
   id: string;
@@ -14,9 +15,11 @@ export interface ContactCreate {
   phone?: string;
 }
 
+// Requests the max page size the API allows; this dashboard doesn't yet have
+// a pager UI, so this is "show everything up to the safety cap" for now.
 export async function listContacts(): Promise<Contact[]> {
-  const { data } = await apiClient.get<Contact[]>("/contacts");
-  return data;
+  const { data } = await apiClient.get<Page<Contact>>("/contacts", { params: { limit: 200 } });
+  return data.items;
 }
 
 export async function createContact(payload: ContactCreate): Promise<Contact> {

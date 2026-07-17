@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { draftReminderMessage, type ReminderTone } from "../api/ai";
 import { listAppointments, type Appointment } from "../api/appointments";
 import { listContacts, type Contact } from "../api/contacts";
@@ -22,6 +22,11 @@ export default function Reminders() {
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
 
+  // Held stable across a failed submission's retry so re-clicking "Add" after a
+  // dropped request resolves to the same reminder instead of creating a duplicate;
+  // cleared once a submission actually succeeds so the next reminder gets a fresh one.
+  const submissionKeyRef = useRef<string | null>(null);
+
   function refresh() {
     listReminders().then(setReminders).catch(() => setReminders([]));
     listAppointments().then(setAppointments).catch(() => setAppointments([]));
@@ -38,12 +43,19 @@ export default function Reminders() {
     }
     setError(null);
     setSubmitting(true);
+    if (!submissionKeyRef.current) {
+      submissionKeyRef.current = crypto.randomUUID();
+    }
     try {
-      await createReminder({
-        appointment_id: appointmentId,
-        message,
-        send_at: new Date(sendAt).toISOString(),
-      });
+      await createReminder(
+        {
+          appointment_id: appointmentId,
+          message,
+          send_at: new Date(sendAt).toISOString(),
+        },
+        submissionKeyRef.current,
+      );
+      submissionKeyRef.current = null;
       setMessage("");
       setSendAt("");
       refresh();
