@@ -1,6 +1,6 @@
 import { apiClient } from "./client";
 
-export type ReminderStatus = "pending" | "queued" | "sent" | "failed" | "dead_letter";
+export type ReminderStatus = "pending" | "queued" | "sent" | "dead_letter";
 
 export interface Reminder {
   id: string;

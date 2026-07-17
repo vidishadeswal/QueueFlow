@@ -15,7 +15,6 @@ class ReminderCreate(BaseModel):
 class ReminderUpdate(BaseModel):
     message: str | None = None
     send_at: datetime | None = None
-    status: ReminderStatus | None = None
 
 
 class ReminderOut(BaseModel):

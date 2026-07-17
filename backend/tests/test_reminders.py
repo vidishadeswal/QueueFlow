@@ -1,3 +1,9 @@
+import uuid
+
+from app.models.reminder import Reminder, ReminderStatus
+from tests.conftest import TestSession
+
+
 async def register_business(client, email: str) -> str:
     await client.post(
         "/auth/signup",
@@ -114,10 +120,35 @@ async def test_retry_endpoint_resets_dead_letter_reminder(client):
     )
     reminder_id = reminder.json()["id"]
 
-    await client.patch(f"/reminders/{reminder_id}", json={"status": "dead_letter"}, headers=headers)
+    async with TestSession() as session:
+        db_reminder = await session.get(Reminder, uuid.UUID(reminder_id))
+        db_reminder.status = ReminderStatus.dead_letter
+        await session.commit()
 
     retry_response = await client.post(f"/reminders/{reminder_id}/retry", headers=headers)
     assert retry_response.status_code == 200
     body = retry_response.json()
     assert body["status"] == "pending"
     assert body["retry_count"] == 0
+
+
+async def test_patch_cannot_set_status_directly(client):
+    """PATCH only allows editing message/send_at -- status changes must go through
+    the dedicated /retry endpoint, which enforces the dead_letter -> pending
+    transition and resets retry_count/last_error alongside it."""
+    token = await register_business(client, "patchstatus@testbiz.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    appointment_id = await create_appointment(client, token)
+
+    reminder = await client.post(
+        "/reminders",
+        json={"appointment_id": appointment_id, "message": "test", "send_at": "2030-01-01T09:00:00Z"},
+        headers=headers,
+    )
+    reminder_id = reminder.json()["id"]
+
+    patch_response = await client.patch(
+        f"/reminders/{reminder_id}", json={"status": "sent"}, headers=headers
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["status"] == "pending"

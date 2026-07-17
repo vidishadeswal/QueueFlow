@@ -10,13 +10,12 @@ const REFRESH_INTERVAL_MS = 10_000;
 
 const STATUS_COLORS: Record<ReminderStatus, string> = {
   sent: "#219a5c",
-  failed: "#e5484d",
   dead_letter: "#e5484d",
   pending: "#b78103",
   queued: "#b78103",
 };
 
-const STATUS_ORDER: ReminderStatus[] = ["sent", "pending", "queued", "failed", "dead_letter"];
+const STATUS_ORDER: ReminderStatus[] = ["sent", "pending", "queued", "dead_letter"];
 
 export default function Dashboard() {
   const { business } = useAuth();
@@ -80,7 +79,6 @@ export default function Dashboard() {
 
       <section className="metrics-grid">
         <MetricCard label="Today's reminders" value={fmtInt(stats?.today_reminders)} />
-        <MetricCard label="Failed reminders" value={fmtInt(stats?.failed_reminders)} />
         <MetricCard label="Upcoming reminders" value={fmtInt(stats?.upcoming_reminders)} />
         <MetricCard label="Delivery %" value={fmtPercent(stats?.delivery_rate)} />
         <MetricCard label="Avg retry count" value={fmtDecimal(stats?.avg_retry_count)} />

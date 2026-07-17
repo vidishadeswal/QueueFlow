@@ -1049,7 +1049,6 @@
   color: #219a5c;
 }
 
-.status-badge.failed,
 .status-badge.dead_letter {
   background: rgba(229, 72, 77, 0.15);
   color: #e5484d;

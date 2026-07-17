@@ -29,7 +29,6 @@ async def get_summary(
         await db.execute(
             select(
                 func.count(case((Reminder.send_at.between(today_start, today_end), 1))),
-                func.count(case((Reminder.status == ReminderStatus.failed, 1))),
                 func.count(case((Reminder.status == ReminderStatus.dead_letter, 1))),
                 func.count(
                     case((and_(Reminder.status == ReminderStatus.pending, Reminder.send_at > now), 1))
@@ -40,14 +39,13 @@ async def get_summary(
         )
     ).one()
 
-    today_reminders, failed_reminders, dead_letter_reminders, upcoming_reminders, sent_reminders, avg_retry_count = counts
+    today_reminders, dead_letter_reminders, upcoming_reminders, sent_reminders, avg_retry_count = counts
 
-    terminal_total = sent_reminders + failed_reminders + dead_letter_reminders
+    terminal_total = sent_reminders + dead_letter_reminders
     delivery_rate = (sent_reminders / terminal_total * 100) if terminal_total > 0 else None
 
     return AnalyticsSummary(
         today_reminders=today_reminders,
-        failed_reminders=failed_reminders,
         dead_letter_reminders=dead_letter_reminders,
         upcoming_reminders=upcoming_reminders,
         delivery_rate=round(delivery_rate, 1) if delivery_rate is not None else None,

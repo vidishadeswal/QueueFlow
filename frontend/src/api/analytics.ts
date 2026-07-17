@@ -2,7 +2,6 @@ import { apiClient } from "./client";
 
 export interface AnalyticsSummary {
   today_reminders: number;
-  failed_reminders: number;
   dead_letter_reminders: number;
   upcoming_reminders: number;
   delivery_rate: number | null;

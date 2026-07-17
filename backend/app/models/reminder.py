@@ -13,7 +13,6 @@ class ReminderStatus(str, enum.Enum):
     pending = "pending"
     queued = "queued"
     sent = "sent"
-    failed = "failed"
     dead_letter = "dead_letter"
 
 
