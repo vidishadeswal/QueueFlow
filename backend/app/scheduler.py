@@ -44,6 +44,7 @@ async def dispatch_due_reminders() -> int:
 
     for reminder_id in reminder_ids:
         await enqueue_reminder(redis_client, reminder_id)
+        logger.info("reminder_dispatched", extra={"reminder_id": reminder_id})
 
     return len(reminder_ids)
 

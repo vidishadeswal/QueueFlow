@@ -9,6 +9,7 @@ from app.api.appointments import get_owned_appointment
 from app.api.deps import get_current_business
 from app.core.database import get_db
 from app.core.idempotency import IdempotencyConflict, claim_idempotency_key, complete_idempotency_key, release_idempotency_key
+from app.core.logging_config import get_logger
 from app.core.redis import redis_client
 from app.models.business import Business
 from app.models.reminder import Reminder, ReminderStatus
@@ -16,6 +17,7 @@ from app.schemas.pagination import Page
 from app.schemas.reminder import ReminderCreate, ReminderOut, ReminderUpdate
 
 router = APIRouter(prefix="/reminders", tags=["reminders"])
+logger = get_logger("api.reminders")
 
 
 async def get_owned_reminder(reminder_id: uuid.UUID, db: AsyncSession, business: Business) -> Reminder:
@@ -41,6 +43,10 @@ async def create_reminder(
                 detail="A request with this Idempotency-Key is already being processed",
             )
         if cached_id is not None:
+            logger.info(
+                "reminder_creation_idempotent_replay",
+                extra={"reminder_id": cached_id, "idempotency_key": idempotency_key},
+            )
             return await get_owned_reminder(uuid.UUID(cached_id), db, business)
 
     try:
@@ -61,6 +67,7 @@ async def create_reminder(
     if idempotency_key:
         await complete_idempotency_key(redis_client, business.id, idempotency_key, str(reminder.id))
 
+    logger.info("reminder_created", extra={"reminder_id": str(reminder.id)})
     return reminder
 
 

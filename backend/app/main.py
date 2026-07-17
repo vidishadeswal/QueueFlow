@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import uuid
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
@@ -11,7 +13,7 @@ from app.api.contacts import router as contacts_router
 from app.api.reminders import router as reminders_router
 from app.core.config import settings
 from app.core.database import engine
-from app.core.logging_config import configure_logging
+from app.core.logging_config import configure_logging, request_id_ctx
 from app.core.metrics import get_counters, get_latency_percentiles
 from app.core.queue import queue_length
 from app.core.redis import redis_client
@@ -27,6 +29,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    # Honors an inbound X-Request-ID (e.g. from a client or upstream proxy) so a
+    # trace can be correlated across service boundaries; generates one otherwise.
+    # Every log line emitted while handling this request picks it up automatically
+    # via the RequestIdFilter/contextvar in core/logging_config.py.
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    token = request_id_ctx.set(request_id)
+    try:
+        response = await call_next(request)
+    finally:
+        request_id_ctx.reset(token)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 app.include_router(auth_router)
 app.include_router(contacts_router)

@@ -181,3 +181,24 @@ same request with the same key (e.g. after a dropped connection) returns the
 original reminder instead of creating a duplicate; a second request with a key
 still being processed gets `409 Conflict`. Keys are scoped per business and
 expire after 24h.
+
+## Observability
+
+Every log line is structured JSON (`core/logging_config.py`) and includes a
+`reminder_id` at each stage of its lifecycle — created (API), dispatched
+(scheduler), sent/failed/dead-lettered (worker) — so a single reminder's path
+through three independent processes can be reconstructed with one `grep`:
+
+```
+backend-1    {"message": "reminder_created",     "reminder_id": "86fef...", "request_id": "live-verify-trace-001"}
+scheduler-1  {"message": "reminder_dispatched",   "reminder_id": "86fef..."}
+worker-1     {"message": "reminder_sent",         "reminder_id": "86fef..."}
+```
+
+The API additionally tags every log line emitted while handling a request with
+a `request_id` — either generated per-request, or echoed back from an inbound
+`X-Request-ID` header if the caller supplies one, so a trace can be correlated
+across service boundaries. It's returned on every response as `X-Request-ID`.
+The scheduler/worker have no request context of their own, so `request_id`
+simply doesn't appear on their log lines — only `reminder_id` ties all three
+together.

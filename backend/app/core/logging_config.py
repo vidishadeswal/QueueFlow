@@ -1,8 +1,19 @@
 import json
 import logging
 import sys
+from contextvars import ContextVar
 
 RESERVED_LOG_RECORD_ATTRS = set(logging.makeLogRecord({}).__dict__.keys())
+
+# Set by the request-id middleware around each HTTP request; unset (None) in the
+# scheduler/worker processes, which have no request context of their own.
+request_id_ctx: ContextVar[str | None] = ContextVar("request_id", default=None)
+
+
+class RequestIdFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.request_id = request_id_ctx.get()
+        return True
 
 
 class JSONFormatter(logging.Formatter):
@@ -16,6 +27,8 @@ class JSONFormatter(logging.Formatter):
 
         for key, value in record.__dict__.items():
             if key not in RESERVED_LOG_RECORD_ATTRS and key != "message":
+                if key == "request_id" and value is None:
+                    continue
                 payload[key] = value
 
         if record.exc_info:
@@ -33,6 +46,7 @@ def configure_logging() -> None:
         return
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JSONFormatter())
+    handler.addFilter(RequestIdFilter())
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(logging.INFO)
