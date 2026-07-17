@@ -84,7 +84,7 @@ async def main() -> None:
     args = parser.parse_args()
 
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30) as client:
-        print(f"Setting up load test business and appointment...")
+        print("Setting up load test business and appointment...")
         token = await ensure_business(client)
         headers = {"Authorization": f"Bearer {token}"}
         appointment_id = await ensure_appointment(client, headers)

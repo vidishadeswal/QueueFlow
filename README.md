@@ -1,5 +1,7 @@
 # QueueFlow
 
+[![CI](https://github.com/vidishadeswal/QueueFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/vidishadeswal/QueueFlow/actions/workflows/ci.yml)
+
 Intelligent workflow & reminder automation platform. A dentist, gym, salon, or clinic
 creates a reminder; QueueFlow reliably delivers it — with retries, backoff, and a
 dead letter queue when delivery keeps failing.
@@ -118,6 +120,40 @@ so they never touch dev data. Coverage: auth (signup/login/JWT), full CRUD +
 cross-tenant isolation for contacts/appointments/reminders, and the worker's
 retry → backoff → dead-letter state machine (mocked email client, no real
 network calls).
+
+## Load testing & horizontal scaling
+
+`scripts/load_test.py` drives 1,000 reminders through the full pipeline
+(API → Postgres → scheduler → Redis → worker) and measures end-to-end drain
+throughput. Run it with `EMAIL_DRY_RUN=true` so it exercises every hop without
+spending real Brevo quota:
+
+```
+docker compose exec backend python scripts/load_test.py --count 1000 --concurrency 50
+```
+
+To test with more workers, scale the `worker` service — no code changes
+needed, since dispatch already uses `SELECT ... FOR UPDATE SKIP LOCKED` to let
+multiple workers pull from the same queue safely:
+
+```
+docker compose up -d --scale worker=3
+```
+
+Results from a local run (1,000 reminders, `EMAIL_DRY_RUN=true`, Docker Desktop
+on macOS):
+
+| Workers | Drain time | End-to-end throughput | Send latency (p50 / p95 / p99) |
+|---|---|---|---|
+| 1 | 70.17s | 14.3 reminders/sec | 54ms / 81ms / 85ms |
+| 3 | 21.27s | 47.0 reminders/sec | 51ms / 79ms / 83ms |
+
+3x the workers produced a **3.3x** throughput gain — close to linear scaling,
+with per-send latency essentially unchanged (each worker still processes one
+job at a time; adding workers adds parallel lanes, not per-job speed). This is
+the payoff of the `claimed_at`/visibility-timeout design: workers can be added
+or removed at will with no coordination between them beyond the shared
+Postgres row locks and the Redis queue.
 
 ## API surface
 
